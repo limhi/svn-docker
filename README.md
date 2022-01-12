@@ -58,3 +58,93 @@ EOF
 
 chmod +x *.sh
 ```
+# 複製範本
+重啟svn容器
+```
+./start.sh
+```
+將相關設定檔，複製到volume中
+```
+./enter.sh
+
+  cp /etc/subversion/* /tmp/svn/svn_config
+  cp /etc/apache2/conf.d/* /tmp/svn/apache2_config
+  exit
+```
+此時相關設定檔已經同步到HOST主機中
+
+# 修改腳本
+更改start.sh
+```
+cat << EOF >start.sh
+#!/bin/bash
+docker stop svn-test
+docker rm svn-test
+docker run --add-host='ldap.alle:59.125.14.2' --restart always --name svn-test -d -p 3690:3690 -p 8080:80 \\
+    -v /docker/volumes/svn/apache2_config:/etc/apache2/conf.d \\
+    -v /docker/volumes/svn/svn_repo:/home/svn \\
+    -v /docker/volumes/svn/svn_config:/etc/subversion \\
+    172.16.9.161:5000/library/svn-server
+EOF
+```
+
+# 更改volume設定後，重啟容器
+```
+./start.sh
+```
+
+# 進入容器，創建倉庫
+```
+./enter.sh
+  mkdir -p /home/svn/myrepo
+  svnadmin create /home/svn/myrepo
+  exit
+```
+
+# 設定SVN權限
+```
+cat << EOF >svn_config/subversion-access-control
+[groups]
+[/]
+* = r
+admin = rw
+EOF
+
+htpasswd -b svn_config/passwd admin admin
+chmod a+w svn_config/*
+```
+
+#設定APACHE
+```
+cat << EOF > apache2_config/dav_svn.conf
+LoadModule dav_svn_module /usr/lib/apache2/mod_dav_svn.so
+LoadModule authz_svn_module /usr/lib/apache2/mod_authz_svn.so
+
+<Location />
+     DAV svn
+     SVNParentPath /home/svn
+     SVNListParentPath On
+     AuthBasicProvider ldap file
+     AuthType Basic
+     AuthName "Subversion Repository"
+     AuthUserFile /etc/subversion/passwd
+     #AuthzLDAPAuthoritative on
+     AuthLDAPURL "ldap://ldap.alle:389/DC=developer,DC=alle,DC=com?cn?sub?(objectClass=*)" NONE
+     AuthzSVNAccessFile /etc/subversion/subversion-access-control
+     Require valid-user
+</Location>
+EOF
+
+chmod a+w apache2_config/*
+```
+
+# 完成所有設定後，重啟容器
+```
+./start.sh
+```
+
+# 查看成果
+http://172.16.9.116:8080/
+```
+svn co http://172.16.9.116:8080/myrepo myrepo
+```
