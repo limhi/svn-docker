@@ -106,7 +106,7 @@ EOF
 cat << EOF >svn_config/subversion-access-control
 [groups]
 [/]
-* = r
+* = rw
 admin = rw
 EOF
 
