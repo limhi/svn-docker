@@ -114,7 +114,7 @@ htpasswd -b svn_config/passwd admin admin
 chmod a+w svn_config/*
 ```
 
-#設定APACHE
+# 設定APACHE
 ```
 cat << EOF > apache2_config/dav_svn.conf
 LoadModule dav_svn_module /usr/lib/apache2/mod_dav_svn.so
@@ -136,6 +136,11 @@ LoadModule authz_svn_module /usr/lib/apache2/mod_authz_svn.so
 EOF
 
 chmod a+w apache2_config/*
+```
+
+# 設定SVN倉庫權限
+```
+chmod a+w -R svn_repo/
 ```
 
 # 完成所有設定後，重啟容器
